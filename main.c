@@ -104,7 +104,7 @@ void ISR_GPIOD(void){
     GPIOIntClear(GPIO_PORTD_BASE, GPIO_PIN_3);
     if(initMag == false && checkHallIR == 0)
     {
-        pack(WRITING_SEND, CURRENT_MODE_SETTING_VALUE,0,1500);
+        pack(WRITING_SEND, CURRENT_MODE_SETTING_VALUE,0,1800);
         QEIPositionSet(QEI0_BASE, 0);
         CANMessageSet(CAN0_BASE, 9, &sMsgObjectDataTx, MSG_OBJ_TYPE_TX);
         checkHallIR++;
@@ -114,7 +114,7 @@ void ISR_GPIOD(void){
         checkHallIR++;
         initMag = true;
         initFahrt = true;
-        pack(WRITING_SEND, CURRENT_MODE_SETTING_VALUE,0,-1500);
+        pack(WRITING_SEND, CURRENT_MODE_SETTING_VALUE,0,-1800);
         CANMessageSet(CAN0_BASE, 9, &sMsgObjectDataTx, MSG_OBJ_TYPE_TX);
     }
     else
@@ -292,7 +292,7 @@ void Task_Idle(void)
             pui8TxBuffer[3] = 0;
             CANMessageSet(CAN0_BASE, 8, &MsgObjectTx3, MSG_OBJ_TYPE_TX);
             initFahrt = false;
-            QEIPositionSet(QEI0_BASE,0);
+           // QEIPositionSet(QEI0_BASE,0);
         }
     }
   //  System_flush();
@@ -306,7 +306,7 @@ void Task_100ms(void)
     if(initStart == true)
     {
         //fahre langsam mit 1000ma nach rechts
-        pack(WRITING_SEND, CURRENT_MODE_SETTING_VALUE,0,-1500);
+        pack(WRITING_SEND, CURRENT_MODE_SETTING_VALUE,0,-1800);
         CANMessageSet(CAN0_BASE, 9, &sMsgObjectDataTx, MSG_OBJ_TYPE_TX);
         initStart = false;
     }
@@ -447,21 +447,29 @@ void ConfigureQEI0(){
 
     GPIOPinConfigure(GPIO_PF0_PHA0);
     GPIOPinConfigure(GPIO_PF1_PHB0);
+    GPIOPinConfigure(GPIO_PF4_IDX0);
 
-    GPIOPinTypeQEI(GPIO_PORTF_BASE, GPIO_PIN_0);
+    GPIOPinTypeQEI(GPIO_PORTF_BASE, GPIO_PIN_0 | GPIO_PIN_4);
     GPIOPinTypeQEI(GPIO_PORTF_BASE, GPIO_PIN_1);
+
+    SysCtlDelay(20);
 
     //DISable peripheral and int before configuration
     QEIDisable(QEI0_BASE);
-    QEIIntDisable(QEI0_BASE,QEI_INTERROR | QEI_INTDIR | QEI_INTTIMER | QEI_INTINDEX);
+   // QEIIntDisable(QEI0_BASE,QEI_INTERROR | QEI_INTDIR | QEI_INTTIMER | QEI_INTINDEX);
 
-    QEIConfigure(QEI0_BASE, QEI_CONFIG_CAPTURE_A_B | QEI_CONFIG_NO_RESET | QEI_CONFIG_QUADRATURE | QEI_CONFIG_NO_SWAP, 100000);
+    //meine Configure
+    //QEIConfigure(QEI0_BASE, QEI_CONFIG_CAPTURE_A_B | QEI_CONFIG_NO_RESET | QEI_CONFIG_QUADRATURE | QEI_CONFIG_NO_SWAP, 100000);
 
+    //Sebastian seine configure
+    QEIConfigure(QEI0_BASE, (QEI_CONFIG_CAPTURE_A_B | QEI_CONFIG_QUADRATURE | QEI_CONFIG_RESET_IDX | QEI_CONFIG_NO_SWAP), 0xFFFFFFFF);
     //Enable velocity capture QEI Module 0
     //QEIVelocityConfigure(QEI0_BASE, QEI_VELDIV_1, SysCtlClockGet() * TIME_TO_COUNT);
     // 3rd Parameter = Number of clock cycles to count ticks
     // ex. 80000000 = sysctlclock = 1 sek
     //QEIVelocityEnable(QEI0_BASE);
+
+    SysCtlDelay(20);
 
     // enable QEI module
     QEIEnable(QEI0_BASE);
@@ -474,10 +482,15 @@ void ConfigureQEI0(){
     //QEIVelocityEnable(QEI0_BASE);
 
     // enable gpio interrupts to allow period measurement
-    GPIOIntDisable(GPIO_PORTF_BASE, GPIO_PIN_0);
-    GPIOIntClear(GPIO_PORTF_BASE, GPIO_INT_PIN_0);
-    GPIOIntTypeSet(GPIO_PORTF_BASE, GPIO_PIN_0,GPIO_RISING_EDGE);
-    GPIOIntEnable(GPIO_PORTF_BASE, GPIO_PIN_0);
+    // GPIOIntDisable(GPIO_PORTF_BASE, GPIO_PIN_0);
+    // GPIOIntClear(GPIO_PORTF_BASE, GPIO_INT_PIN_0);
+    // GPIOIntTypeSet(GPIO_PORTF_BASE, GPIO_PIN_0,GPIO_RISING_EDGE);
+    // GPIOIntEnable(GPIO_PORTF_BASE, GPIO_PIN_0);
+
+    //Clear all QEI Interrupt sources
+    QEIIntClear(QEI0_BASE, (QEI_INTERROR | QEI_INTDIR | QEI_INTTIMER | QEI_INTINDEX));
+    QEIIntDisable(QEI0_BASE,(QEI_INTTIMER));
+
     printf(" done.\n");
     return;
 }
